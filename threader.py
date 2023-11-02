@@ -9,6 +9,8 @@ import requests
 from dotenv import load_dotenv
 from imapclient import IMAPClient
 
+import redmine
+
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
@@ -16,17 +18,14 @@ log.info('initializing threader')
 
 # load credentials 
 load_dotenv()
-redmine = os.getenv('REDMINE_HOST')
-secret = os.getenv('REDMINE_KEY')
 host = os.getenv('IMAP_HOST')
 user = os.getenv('IMAP_USER')
 passwd = os.getenv('IMAP_PASSWORD')
 
+
+client = redmine.Client()
+
 log.info(f'logging into {host}')
-
-# url to POST new email tickets to redmine
-ingest_url = f"http://{redmine}/mail_handler"
-
 with IMAPClient(host=host, port=993, ssl=True) as server:
     server.login(user, passwd)
     server.select_folder("INBOX", readonly=True)
@@ -35,30 +34,34 @@ with IMAPClient(host=host, port=993, ssl=True) as server:
     messages = server.search("UNSEEN")
     for uid, message_data in server.fetch(messages, "RFC822").items():
         email_message = email.message_from_bytes(message_data[b"RFC822"])
-        log.info(f'{uid} - from:{email_message.get("From")}, subject:{email_message.get("Subject")}')
         
-        # POST to /mail_handler API
-        headers = {
-            'User-Agent': 'threader/0.0.1',
-        }
+        # map userid from From
+        from_address = email_message.get("From")
+        subject = email_message.get("Subject")
+        body = email_message.get("Body")
+        log.info(f'uid:{uid} - from:{from_address}, subject:{subject}')
 
-        data = { 
-            'key': secret, 
-            'email': email_message.as_string(), #email.gsub(/(?<!\r)\n|\r(?!\n)/, "\r\n"),
-            'allow_override': True,
-            #'unknown_user': "create",
-            #'project': "scn",
-            #'default_group': default_group,
-            #'no_account_notice': no_account_notice,
-            #'no_notification': no_notification,
-            #'no_permission_check': no_permission_check,
-            #'project_from_subaddress': project_from_subaddress,
-        }
+        user = client.find_user(from_address)
+        if user == None:
+            log.error(f"Unknown email address, no user found: {from_address}")
+            # create new user if needed -> always new ticket
+            # TODO try parsing first and last from from_address
+            #first = ""
+            #last = ""
+            #user = client.create_user(from_address, first, last)
 
-        r = requests.post(url=ingest_url, data=data, headers=headers)
+        # map ticket from Subject, if possible
+        ticket = client.client.find_ticket_from_str(subject)
+        
+        # map ticket from "most recently updated open ticket by userid", if any
+        if user and (ticket is None):
+            ticket = client.most_recent_ticket_for(user)
 
-        from pprint import pprint
-        pprint(vars(r))
-
-        log.info(f"request sent {ingest_url}, response: {r}")
-
+        if ticket:
+            client.append_message(ticket.id, user.login, body)
+            log.info(f"Updated ticket #{ticket.id} with message from {user.login}")
+            # TODO handle attachments
+        else:
+            # open new ticket for the email
+            ticket = client.create_ticket(user.login, subject, body)
+            log.info(f"Created new ticket from: {user.login}")
