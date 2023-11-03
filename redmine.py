@@ -40,7 +40,11 @@ class Client(): ## redmine.Client()
             }
         }
 
-        r = requests.post(f"{self.url}/issues.json", data=data, headers=headers)
+        r = requests.post(
+            url=f"{self.url}/issues.json", 
+            data=json.dumps(data), 
+            headers=headers)
+        
         # check 201 status
         #root = json.loads(r.text, object_hook= lambda x: SimpleNamespace(**x))
         #ticket = root.ticket[0]
@@ -61,11 +65,16 @@ class Client(): ## redmine.Client()
             }
         }
 
-        r = requests.put(f"{self.url}/issues/{ticket_id}.json", data=data, headers=headers)
+        r = requests.put(
+            url=f"{self.url}/issues/{ticket_id}.json", 
+            data=json.dumps(data),
+            headers=headers)
+        
         # check 201 status
-
-        print(vars(r))
-
+        if r.status_code != 201:
+            print(vars(r))
+            print(r.raw)
+        
         #root = json.loads(r.text, object_hook= lambda x: SimpleNamespace(**x))
         #root = json.loads(r.text, object_hook=lambda d: namedtuple('Issue', d.keys())(*d.values()))
 
@@ -157,8 +166,6 @@ class Client(): ## redmine.Client()
             log.warning(f"Unknown email: {email}")
             return None
 
-    
-
     def query(self, query_str: str):
         """run a query against a redmine instance"""
         headers = {
@@ -183,6 +190,7 @@ class Client(): ## redmine.Client()
 #from dotenv import load_dotenv
 #load_dotenv()
 #client = Client()
+#client.append_message(93, "johnelliott703@gmail.com", "testing the append_message api")
 #ticket = client.find_ticket_from_str("this is a test of #93 to see what happens")
 #print(client.most_recent_ticket_for("johnelliott703@gmail.com"))
 #print(client.find_user("johnelliott703@gmail.com"))

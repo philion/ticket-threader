@@ -3,6 +3,7 @@
 import os
 import logging
 import email
+import email.policy
 import re
 
 import redmine
@@ -18,6 +19,7 @@ class Client(): ## imap.Client()
         self.host = os.getenv('IMAP_HOST')
         self.user = os.getenv('IMAP_USER')
         self.passwd = os.getenv('IMAP_PASSWORD')
+        self.port = 993
 
         self.redmine = redmine.Client()
 
@@ -40,10 +42,12 @@ class Client(): ## imap.Client()
     def handle_message(self, uid, message):
         from_address = message.get("From")
         subject = message.get("Subject")
-        body = message.get("Body")
+
+        # this is to strip the leading content-type line
+        body = message.get_body('plain').as_string().split('\n', maxsplit=1)[1]
 
         first, last, addr = self.parse_email_address(from_address)
-        log.info(f'uid:{uid} - from:{first} {last}, email:{addr}, subject:{subject}')
+        log.info(f'uid:{uid} - from:{last}, {first}, email:{addr}, subject:{subject}')
 
         # get user id from from_address
         user = self.redmine.find_user(addr)
@@ -72,6 +76,11 @@ class Client(): ## imap.Client()
             ticket = self.redmine.create_ticket(user.login, subject, body)
             log.info(f"Created new ticket from: {user.login}")
 
+    def parse_message(self, message_data):
+        bytes = message_data[b"RFC822"]
+        message = email.message_from_bytes(bytes)
+        return message
+
     def check_unseen(self):
         with IMAPClient(host=self.host, port=self.port, ssl=True) as server:
             server.login(self.user, self.passwd)
@@ -81,15 +90,10 @@ class Client(): ## imap.Client()
             messages = server.search("UNSEEN")
             for uid, message_data in server.fetch(messages, "RFC822").items():
                 # handle each message returned by the query
-                self.handle_message(uid, email.message_from_bytes(message_data[b"RFC822"]))
+                message = email.message_from_bytes(
+                    message_data[b"RFC822"], 
+                    policy=email.policy.default)
+
+                self.handle_message(uid, message)
                 # TODO mark msg uid seen?
 
-
-
-## Local testing - REMOVE
-#from dotenv import load_dotenv
-#load_dotenv()
-#client = Client()
-
-#first, last, addr = client.parse_email_address("Paul Philion <philion@seattlecommunitynetwork.org>")
-#log.info(f'first:{first}, last:{last}, email:{addr}')
