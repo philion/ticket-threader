@@ -10,6 +10,8 @@ import redmine
 
 from imapclient import IMAPClient, SEEN, DELETED
 
+# imapclient docs: https://imapclient.readthedocs.io/en/3.0.0/index.html
+# source code: https://github.com/mjs/imapclient
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -77,10 +79,8 @@ class Client(): ## imap.Client()
             self.redmine.create_ticket(user.login, subject, body)
             log.info(f"Created new ticket from: {user.login}")
 
-    def parse_message(self, message_data):
-        bytes = message_data[b"RFC822"]
-        message = email.message_from_bytes(bytes)
-        return message
+    def parse_message(self, data):
+        return email.message_from_bytes(data[b"RFC822"])
 
     def check_unseen(self):
         with IMAPClient(host=self.host, port=self.port, ssl=True) as server:
@@ -93,15 +93,14 @@ class Client(): ## imap.Client()
                 # process each message returned by the query
                 try:
                     # decode the message
-                    message = email.message_from_bytes(
-                        message_data[b"RFC822"], 
-                        policy=email.policy.default)
+                    message = self.parse_message(message_data)
                     
                     # handle the message
                     self.handle_message(uid, message)
 
                     #  mark msg uid seen and deleted, as per redmine imap.rb
                     server.add_flags(uid, [SEEN, DELETED])
+                    
                 except Exception as e:
                     log.error(f"Message {uid} can not be processed: {e}")
                     server.add_flags(uid, [SEEN])
