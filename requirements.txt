@@ -1,5 +1,6 @@
 certifi==2023.7.22
 charset-normalizer==3.3.1
+html2text==2020.1.16
 idna==3.4
 IMAPClient==3.0.0
 python-dotenv==1.0.0

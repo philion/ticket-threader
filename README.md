@@ -16,6 +16,12 @@ pip install requests
 pip freeze > requirements.txt
 ```
 
+### testing
+
+```
+python -m unittest
+```
+
 ## operation
 
 ### running

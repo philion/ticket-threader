@@ -70,11 +70,12 @@ class Client(): ## redmine.Client()
             data=json.dumps(data),
             headers=headers)
         
-        # check 201 status
-        if r.status_code != 201:
-            print(vars(r))
-            print(r.raw)
+        print(f"response: {r}")
         
+        # check status
+        #if r.status_code != 201:
+        #    print(vars(r))
+        #    print(r.raw)
         #root = json.loads(r.text, object_hook= lambda x: SimpleNamespace(**x))
         #root = json.loads(r.text, object_hook=lambda d: namedtuple('Issue', d.keys())(*d.values()))
 
@@ -84,25 +85,71 @@ class Client(): ## redmine.Client()
         #    return None
 
         #return root
-
-
-        # email is full email message, with from, subject and body
-        # PUT /issues/[id].json
-        # {
-        #    "issue": {
-        #      "notes": "{email.body}" 
-        #    }
-        # }
-
-
-        # for attachments
-        # First, upload your file:
+        
+    def upload_file(self, user_id, data, filename, content_type):
         # POST /uploads.json?filename=image.png
         # Content-Type: application/octet-stream
         # (request body is the file content)
+        
+        headers = { # TODO DRY headers
+            'User-Agent': 'netbot/0.0.1', # TODO update to project version, and add version management
+            'Content-Type': 'application/octet-stream',
+            'X-Redmine-API-Key': self.token,
+            'X-Redmine-Switch-User': user_id, # Make sure the comment is noted by the correct user
+        }
+
+        r = requests.post(
+            url=f"{self.url}/uploads.json?filename={filename}", 
+            files={ 'upload_file': (filename, data, content_type) },
+            headers=headers
+        )
+        
         # 201 response:
         #     {"upload":{"token":"7167.ed1ccdb093229ca1bd0b043618d88743"}}
-        # Then create the issue using the upload token:
+        if r.status_code == 201:
+            # all good, get token
+            root = json.loads(r.text, object_hook= lambda x: SimpleNamespace(**x))
+            token = root.upload.token
+            log.info(f"Uploaded {filename} {content_type}, got token={token}")
+            return token
+        else:
+            log.error(f"Error uploading {filename} {content_type} - response:{r}")
+
+    def append_attachment(self, ticket_id, user_id, data, filename, content_type):
+        # prepend ticket# to filename for uniqueness and clarity
+        ticket_filename = ticket_id + '_' + filename
+
+        # upload the data as a new file
+        upload_token = self.upload_file(user_id, data, ticket_filename, content_type)
+
+        # then PUT the upload to the issue API
+        headers = { # TODO DRY headers
+            'User-Agent': 'netbot/0.0.1', # TODO update to project version, and add version management
+            'Content-Type': 'application/json',
+            'X-Redmine-API-Key': self.token,
+            'X-Redmine-Switch-User': user_id, # Make sure the comment is noted by the correct user
+        }
+
+        # PUT a simple JSON structure with the uploaded file info
+        data = {
+            'issue': {
+                'notes': f"Uploading attachment {filename} to ticket #{ticket_id}.",
+                'uploads': [
+                    { 
+                        "token": upload_token, 
+                        "filename": ticket_filename,
+                        "content_type": content_type,
+                    }
+                ]
+            }
+        }
+
+        r = requests.put(
+            url=f"{self.url}/issues/{ticket_id}.json", 
+            data=json.dumps(data),
+            headers=headers)
+
+        print(f"response: {r}")
 
         #You can also upload multiple files (by doing multiple POST requests to /uploads.json), then create an issue with multiple attachments:
         #POST /issues.json
@@ -116,7 +163,6 @@ class Client(): ## redmine.Client()
         #    ]
         #  }
         #}
-        pass
 
     def find_user(self, email):
         response = self.query(f"/users.json?name={email}")
