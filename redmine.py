@@ -8,8 +8,6 @@ import logging
 import datetime as dt
 #import humanize
 
-from dotenv import load_dotenv
-
 from types import SimpleNamespace
 #from collections import namedtuple
 
@@ -182,66 +180,9 @@ class Client(): ## redmine.Client()
 
 
 ## Local testing - REMOVE
-load_dotenv()
-client = Client()
+#from dotenv import load_dotenv
+#load_dotenv()
+#client = Client()
 #ticket = client.find_ticket_from_str("this is a test of #93 to see what happens")
-print(client.most_recent_ticket_for("johnelliott703@gmail.com"))
+#print(client.most_recent_ticket_for("johnelliott703@gmail.com"))
 #print(client.find_user("johnelliott703@gmail.com"))
-
-
-# @dataclass
-# class NamedId:
-#     id: int
-#     name: str
-
-#     def __str__(self) -> str:
-#         return self.name
-
-
-# @dataclass
-# class Issue:
-#     id: int
-#     project: NamedId
-#     tracker: NamedId
-#     status: NamedId
-#     priority: NamedId
-#     author: NamedId
-#     assigned_to: NamedId
-#     subject: str
-#     description: str
-#     start_date: dt.date
-#     due_date: dt.date
-#     done_ratio: float
-#     is_private: bool
-#     estimated_hours: float
-#     total_estimated_hours: float
-#     spent_hours: float
-#     total_spent_hours: float
-#     created_on: dt.datetime
-#     updated_on: dt.datetime
-#     closed_on: dt.datetime
-#     custom_fields: dict
-#     #url: str # TODO is there a formal URL type?
-
-
-### issue fields ###
-# issue url: http://40.65.85.252/issues/22 -> {base_url}/issues/{issue.id}
-# {'id': 2, 'project': {'id': 1, 'name': 'Seattle Community Network'}, 
-# 'tracker': {'id': 3, 'name': 'Support'}, 
-# 'status': {'id': 1, 'name': 'New', 'is_closed': False}, 
-# 'priority': {'id': 3, 'name': 'High'}, 
-# 'author': {'id': 5, 'name': 'Paul Philion'}, 
-# 'assigned_to': {'id': 6, 'name': 'Esther Jang'}, 
-# 'subject': 'Testing email notification', 
-# 'description': 'Is email getting sent?\r\n\r\nEsther will know.', 
-# 'start_date': '2023-08-01', 
-# 'due_date': None, 
-# 'done_ratio': 0, 
-# 'is_private': False, 
-# 'estimated_hours': None, 
-# 'total_estimated_hours': None, 
-# 'spent_hours': 0.0, 
-# 'total_spent_hours': 0.0, 
-# 'created_on': '2023-08-01T00:21:07Z', 
-# 'updated_on': '2023-08-04T16:34:24Z', 
-# 'closed_on': None
