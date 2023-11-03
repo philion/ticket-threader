@@ -8,7 +8,7 @@ import re
 
 import redmine
 
-from imapclient import IMAPClient
+from imapclient import IMAPClient, SEEN, DELETED
 
 
 logging.basicConfig(level=logging.INFO)
@@ -55,8 +55,9 @@ class Client(): ## imap.Client()
             log.error(f"Unknown email address, no user found: {addr}, {from_address}")
             # create new user if needed -> always new ticket
             # TODO try parsing first and last from from_address
-            #user = redmine.create_user(addr, first, last)
-
+            # user = redmine.create_user(addr, first, last)
+            # self.redmine.create_ticket(user.login, subject, body)
+ 
         # find ticket using the subject, if possible
         # this uses a simple REGEX '#\d+' to match ticket numbers
         ticket = self.redmine.find_ticket_from_str(subject)
@@ -73,7 +74,7 @@ class Client(): ## imap.Client()
             # TODO handle attachments
         else:
             # no open tickets, create new ticket for the email message
-            ticket = self.redmine.create_ticket(user.login, subject, body)
+            self.redmine.create_ticket(user.login, subject, body)
             log.info(f"Created new ticket from: {user.login}")
 
     def parse_message(self, message_data):
@@ -84,16 +85,23 @@ class Client(): ## imap.Client()
     def check_unseen(self):
         with IMAPClient(host=self.host, port=self.port, ssl=True) as server:
             server.login(self.user, self.passwd)
-            server.select_folder("INBOX", readonly=True)
+            server.select_folder("INBOX", readonly=False)
             log.info(f'logged into imap {self.host}')
 
             messages = server.search("UNSEEN")
             for uid, message_data in server.fetch(messages, "RFC822").items():
-                # handle each message returned by the query
-                message = email.message_from_bytes(
-                    message_data[b"RFC822"], 
-                    policy=email.policy.default)
+                # process each message returned by the query
+                try:
+                    # decode the message
+                    message = email.message_from_bytes(
+                        message_data[b"RFC822"], 
+                        policy=email.policy.default)
+                    
+                    # handle the message
+                    self.handle_message(uid, message)
 
-                self.handle_message(uid, message)
-                # TODO mark msg uid seen?
-
+                    #  mark msg uid seen and deleted, as per redmine imap.rb
+                    server.add_flags(uid, [SEEN, DELETED])
+                except Exception as e:
+                    log.error(f"Message {uid} can not be processed: {e}")
+                    server.add_flags(uid, [SEEN])
