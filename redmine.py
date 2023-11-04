@@ -46,12 +46,16 @@ class Client(): ## redmine.Client()
             data=json.dumps(data), 
             headers=headers)
         
+        print(f"create_ticket response: {r}")
+        
+        # check status
+        #if r.status_code != 201:
         # check 201 status
         #root = json.loads(r.text, object_hook= lambda x: SimpleNamespace(**x))
         #ticket = root.ticket[0]
         #return ticket
 
-    def append_message(self, ticket_id:str, user_id:str, note:str):
+    def append_message(self, ticket_id:str, user_id:str, note:str, attachments):
         headers = { # TODO DRY headers
             'User-Agent': 'netbot/0.0.1', # TODO update to project version, and add version management
             'Content-Type': 'application/json',
@@ -62,31 +66,32 @@ class Client(): ## redmine.Client()
         # PUT a simple JSON structure
         data = {
             'issue': {
-                'notes': note
+                'notes': note,
+                'uploads': []
             }
         }
+
+        # add the attachments
+        if len(attachments) > 0:
+            for a in attachments:
+                data['issue']['uploads'].append({
+                    "token": a.token, 
+                    "filename": a.name,
+                    "content_type": a.content_type,
+                })
 
         r = requests.put(
             url=f"{self.url}/issues/{ticket_id}.json", 
             data=json.dumps(data),
             headers=headers)
         
-        print(f"response: {r}")
-        
         # check status
-        #if r.status_code != 201:
-        #    print(vars(r))
-        #    print(r.raw)
-        #root = json.loads(r.text, object_hook= lambda x: SimpleNamespace(**x))
-        #root = json.loads(r.text, object_hook=lambda d: namedtuple('Issue', d.keys())(*d.values()))
+        if r.status_code != 204:
+            root = json.loads(r.text, object_hook= lambda x: SimpleNamespace(**x))
+            log.error(f"append_message, status={r.status_code}: {root}")
+            # throw exception?
 
-        # check for error
-        #if root.errors:
-        #    log.error(f"Error running |{query_str}|: {root.errors}")
-        #    return None
 
-        #return root
-        
     def upload_file(self, user_id, data, filename, content_type):
         # POST /uploads.json?filename=image.png
         # Content-Type: application/octet-stream
@@ -105,8 +110,7 @@ class Client(): ## redmine.Client()
             headers=headers
         )
         
-        # 201 response:
-        #     {"upload":{"token":"7167.ed1ccdb093229ca1bd0b043618d88743"}}
+        # 201 response: {"upload":{"token":"7167.ed1ccdb093229ca1bd0b043618d88743"}}
         if r.status_code == 201:
             # all good, get token
             root = json.loads(r.text, object_hook= lambda x: SimpleNamespace(**x))
@@ -114,15 +118,21 @@ class Client(): ## redmine.Client()
             log.info(f"Uploaded {filename} {content_type}, got token={token}")
             return token
         else:
-            print(vars(r))
+            #print(vars(r))
             log.error(f"Error uploading {filename} {content_type} - response:{r}")
+            # todo throw exception
 
-    def append_attachment(self, ticket_id, user_id, data, filename, content_type):
-        # prepend ticket# to filename for uniqueness and clarity
-        ticket_filename = f"{ticket_id}_{filename}"
+    def upload_attachments(self, user_id, attachments):
+        # uploads all the attachments, 
+        # sets the upload token for each 
+        for a in attachments:
+            token = self.upload_file(user_id, a.payload, a.name, a.content_type)
+            a.set_token(token)
 
+    ### OLD REMOVE
+    def xxx_append_attachment(self, ticket_id, user_id, data, filename, content_type):
         # upload the data as a new file
-        upload_token = self.upload_file(user_id, data, ticket_filename, content_type)
+        upload_token = self.upload_file(user_id, data, filename, content_type)
 
         # then PUT the upload to the issue API
         headers = { # TODO DRY headers
@@ -139,7 +149,7 @@ class Client(): ## redmine.Client()
                 'uploads': [
                     { 
                         "token": upload_token, 
-                        "filename": ticket_filename,
+                        "filename": filename,
                         "content_type": content_type,
                     }
                 ]
@@ -151,20 +161,7 @@ class Client(): ## redmine.Client()
             data=json.dumps(data),
             headers=headers)
 
-        print(f"response: {r}")
-
-        #You can also upload multiple files (by doing multiple POST requests to /uploads.json), then create an issue with multiple attachments:
-        #POST /issues.json
-        #{
-        #  "issue": {
-        #    "project_id": "1",
-        #    "subject": "Creating an issue with a uploaded file",
-        #    "uploads": [
-        #    {"token": "7167.ed1ccdb093229ca1bd0b043618d88743", "filename": "image1.png", "content_type": "image/png"},
-        #    {"token": "7168.d595398bbb104ed3bba0eed666785cc6", "filename": "image2.png", "content_type": "image/png"}
-        #    ]
-        #  }
-        #}
+        print(f"append_attachment response: {r}")
 
     def find_user(self, email):
         response = self.query(f"/users.json?name={email}")
@@ -232,13 +229,3 @@ class Client(): ## redmine.Client()
         #    return None
 
         return root
-
-
-## Local testing - REMOVE
-#from dotenv import load_dotenv
-#load_dotenv()
-#client = Client()
-#client.append_message(93, "johnelliott703@gmail.com", "testing the append_message api")
-#ticket = client.find_ticket_from_str("this is a test of #93 to see what happens")
-#print(client.most_recent_ticket_for("johnelliott703@gmail.com"))
-#print(client.find_user("johnelliott703@gmail.com"))

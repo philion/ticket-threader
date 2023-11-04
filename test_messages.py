@@ -20,7 +20,7 @@ class TestMessages(unittest.TestCase):
         for filename in glob.glob('test_messages/*.eml'):
             with open(os.path.join(os.getcwd(), filename), 'rb') as file:
                 message = imap.parse_message(file.read())
-                print(message)
+                #print(message)
 
     def test_email_address_parsing(self):
         from_address =  "Esther Jang <infrared@cs.washington.edu>"

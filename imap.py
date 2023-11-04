@@ -31,6 +31,12 @@ class Attachment():
         self.content_type = type
         self.payload = payload
 
+    def upload(self, client, user_id):
+        self.token = client.upload_file(user_id, self.payload, self.name, self.content_type)
+
+    def set_token(self, token):
+        self.token = token
+
 
 class Message():
     def __init__(self, from_addr:str, subject:str):
@@ -67,8 +73,8 @@ def parse_message(data):
                 payload=part.get_payload(decode=True)))
             log.debug(f"Added attachment: {part.get_filename()} {content_type}")
         elif content_type == 'text/plain': # FIXME std const?
-            payload = part.get_payload(decode=True)
-            message.set_note(str(payload))
+            payload = part.get_payload(decode=True).decode('UTF-8')
+            message.set_note(payload)
             log.debug(f"Set note, size={len(payload)}: {payload[0:20]}...")
 
     return message
@@ -95,7 +101,6 @@ class Client(): ## imap.Client()
         self.user = os.getenv('IMAP_USER')
         self.passwd = os.getenv('IMAP_PASSWORD')
         self.port = 993
-
         self.redmine = redmine.Client()
 
 
@@ -125,15 +130,15 @@ class Client(): ## imap.Client()
 
         if ticket:
             # found a ticket, append the message
-            self.redmine.append_message(ticket.id, user.login, message.note)
-            log.info(f"Updated ticket #{ticket.id} with message from {user.login}")
-            # TODO opportunity to refactor into several uploads and one note w/ all attachments.
+
+            # first, upload any attachments
             for attachment in message.attachments:
-                self.redmine.append_attachment(ticket.id, 
-                                               user.login, 
-                                               attachment.payload, 
-                                               attachment.name, 
-                                               attachment.content_type)
+                # uploading the attachment this way
+                # puts the token in the attachment
+                attachment.upload(self.redmine, user.login)
+
+            self.redmine.append_message(ticket.id, user.login, message.note, message.attachments)
+            log.info(f"Updated ticket #{ticket.id} with message from {user.login}")
         else:
             # no open tickets, create new ticket for the email message
             self.redmine.create_ticket(user.login, message.subject, message.body)
@@ -180,3 +185,7 @@ if __name__ == '__main__':
 
     # construct the client and run the email check
     Client().check_unseen()
+
+    #with open("test_messages/message-666.eml", 'rb') as file:
+    #    message = parse_message(file.read())
+    #    Client().handle_message("666", message)
