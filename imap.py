@@ -177,6 +177,9 @@ class Client(): ## imap.Client()
                     server.add_flags(uid, [SEEN])
 
 
+# this behavior mirrors that of threader.py, for now.
+# in the furute, this will run the imap threading, while
+# threader.py will coordinate all the threaders.
 if __name__ == '__main__':
     log.info('initializing IMAP threader')
 
@@ -186,6 +189,6 @@ if __name__ == '__main__':
     # construct the client and run the email check
     Client().check_unseen()
 
-    #with open("test_messages/message-666.eml", 'rb') as file:
+    #with open("test_messages/message-126.eml", 'rb') as file:
     #    message = parse_message(file.read())
-    #    Client().handle_message("666", message)
+    #    Client().handle_message("126", message)

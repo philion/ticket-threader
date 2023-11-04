@@ -176,7 +176,7 @@ class Client(): ## redmine.Client()
             log.warning(f"Unknown ticket number: {ticket_num}")
             return None
 
-    def find_ticket_from_str(self, str):
+    def find_ticket_from_str(self, str:str):
         # for now, this is a trivial REGEX to match '#nnn' in a string, and return ticket #nnn
         match = re.search(r'#(\d+)', str)
         if match:
@@ -200,8 +200,9 @@ class Client(): ## redmine.Client()
         user = self.find_user(email)
 
         if user:
-            # query open tickets for user, sorted by most recent, limit 1
-            response = self.query(f"/issues.json?author_id={user.id}")
+            # query open tickets created by user, sorted by most recently updated, limit 1
+            response = self.query(f"/issues.json?author_id={user.id}&status_id=open&sort=updated_on:desc&limit=1")
+
             if response.total_count > 0:
                 return response.issues[0]
             else:
@@ -220,12 +221,9 @@ class Client(): ## redmine.Client()
         }
         # run the query with the 
         r = requests.get(f"{self.url}{query_str}", headers=headers)
-        root = json.loads(r.text, object_hook= lambda x: SimpleNamespace(**x))
-        #root = json.loads(r.text, object_hook=lambda d: namedtuple('Issue', d.keys())(*d.values()))
 
-        # check for error
-        #if root.errors:
-        #    log.error(f"Error running |{query_str}|: {root.errors}")
-        #    return None
+        # check 200 status code
+
+        root = json.loads(r.text, object_hook= lambda x: SimpleNamespace(**x))
 
         return root

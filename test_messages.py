@@ -40,6 +40,14 @@ class TestMessages(unittest.TestCase):
             for attachment in message.attachments:
                 client.append_attachment("93", "philion", attachment.payload, attachment.name, attachment.content_type)
 
+    def test_more_recent_ticket(self):
+        load_dotenv()
+        client = redmine.Client()
+
+        ticket = client.most_recent_ticket_for("philion")
+        self.assertIsNotNone(ticket)
+        #print(ticket)
+
 
 if __name__ == '__main__':
     unittest.main()
