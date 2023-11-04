@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 
 import unittest
+import logging
 import os, glob
 
+from dotenv import load_dotenv
+
 import imap
+import redmine
+
+logging.basicConfig(level=logging.DEBUG)
+#log = logging.getLogger(__name__)
+
 
 class TestMessages(unittest.TestCase):
 
@@ -20,6 +28,17 @@ class TestMessages(unittest.TestCase):
         self.assertEqual(first, "Esther")
         self.assertEqual(last, "Jang")
         self.assertEqual(addr, "infrared@cs.washington.edu")
+
+    # disabled so I don't flood the system with files
+    def skip_test_upload(self):
+        load_dotenv()
+        client = redmine.Client()
+
+        with open("test_messages/message-126.eml", 'rb') as file:
+            message = imap.parse_message(file.read())
+            print(message)
+            for attachment in message.attachments:
+                client.append_attachment("93", "philion", attachment.payload, attachment.name, attachment.content_type)
 
 
 if __name__ == '__main__':

@@ -68,7 +68,7 @@ def parse_message(data):
             log.debug(f"Added attachment: {part.get_filename()} {content_type}")
         elif content_type == 'text/plain': # FIXME std const?
             payload = part.get_payload(decode=True)
-            message.set_note(payload)
+            message.set_note(str(payload))
             log.debug(f"Set note, size={len(payload)}: {payload[0:20]}...")
 
     return message
@@ -77,11 +77,11 @@ def parse_message(data):
 # but I don't see a better way. open to suggestions
 def parse_email_address(email_addr):
     #regex_str = r"(.*)<(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)>"
-    regex_str = r"(.*) <(.*)>"
+    regex_str = r"(.*)<(.*)>"
     m = re.match(regex_str, email_addr)
     first = last = addr = ""
     if m:
-        first, last = m.group(1).rsplit(' ', 1)
+        first, last = m.group(1).strip().rsplit(' ', 1)
         addr = m.group(2)
     else:
         log.error(f"Unable to parse email str: {email_addr}")
@@ -128,11 +128,11 @@ class Client(): ## imap.Client()
             self.redmine.append_message(ticket.id, user.login, message.note)
             log.info(f"Updated ticket #{ticket.id} with message from {user.login}")
             # TODO opportunity to refactor into several uploads and one note w/ all attachments.
-            for attachment in message.attachents:
+            for attachment in message.attachments:
                 self.redmine.append_attachment(ticket.id, 
                                                user.login, 
                                                attachment.payload, 
-                                               attachment.filename, 
+                                               attachment.name, 
                                                attachment.content_type)
         else:
             # no open tickets, create new ticket for the email message

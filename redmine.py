@@ -13,8 +13,9 @@ from types import SimpleNamespace
 
 
 #from typing import TypedDict # see https://peps.python.org/pep-0589/
-from dataclasses import dataclass
+#from dataclasses import dataclass
 
+#logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 class Client(): ## redmine.Client()
@@ -50,7 +51,7 @@ class Client(): ## redmine.Client()
         #ticket = root.ticket[0]
         #return ticket
 
-    def append_message(self, ticket_id, user_id, body):
+    def append_message(self, ticket_id:str, user_id:str, note:str):
         headers = { # TODO DRY headers
             'User-Agent': 'netbot/0.0.1', # TODO update to project version, and add version management
             'Content-Type': 'application/json',
@@ -61,7 +62,7 @@ class Client(): ## redmine.Client()
         # PUT a simple JSON structure
         data = {
             'issue': {
-                'notes': body
+                'notes': note
             }
         }
 
@@ -113,11 +114,12 @@ class Client(): ## redmine.Client()
             log.info(f"Uploaded {filename} {content_type}, got token={token}")
             return token
         else:
+            print(vars(r))
             log.error(f"Error uploading {filename} {content_type} - response:{r}")
 
     def append_attachment(self, ticket_id, user_id, data, filename, content_type):
         # prepend ticket# to filename for uniqueness and clarity
-        ticket_filename = ticket_id + '_' + filename
+        ticket_filename = f"{ticket_id}_{filename}"
 
         # upload the data as a new file
         upload_token = self.upload_file(user_id, data, ticket_filename, content_type)
