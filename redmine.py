@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 class Client(): ## redmine.Client()
     def __init__(self):
         self.url = os.getenv('REDMINE_URL')
-        self.token = os.getenv('REDMINE_KEY')
+        self.token = os.getenv('REDMINE_TOKEN')
 
     def create_ticket(self, user_id, subject, body):
         # https://www.redmine.org/projects/redmine/wiki/Rest_Issues#Creating-an-issue

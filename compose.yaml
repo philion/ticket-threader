@@ -1,0 +1,11 @@
+services:
+  threader:
+    build:
+      context: .
+    container_name: threader
+    environment:
+      - IMAP_HOST=${IMAP_HOST}
+      - IMAP_USER=${IMAP_USER}
+      - IMAP_PASSWORD=${IMAP_PASSWORD}
+      - REDMINE_TOKEN=${REDMINE_TOKEN}
+      - REDMINE_URL=${REDMINE_URL}
